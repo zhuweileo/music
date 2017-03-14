@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="referrer" content="never">
+    <title>Title</title>
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            user-select:none;
+        }
+        ul,li{
+            list-style-type: none;
+        }
+        .clearfix:after{
+            content: '';
+            display: block;
+            clear:both;
+        }
+        .main{
+            width:610px;
+            margin:200px auto;
+        }
+        .board{
+            background: url(img/music_0003s_0001_Player-front.png);
+            width:610px;
+            height:188px;
+            position: relative;
+        }
+        .board>img{
+             position: absolute;
+             bottom:2px;
+             left:41px;
+        }
+        .content{
+            float:left;
+            overflow: hidden;
+            height: 100%;
+            margin-left:219px;
+        }
+        .singer{
+            margin-top:30px;
+            color:#626262;
+            font-size:20px;
+            height: 26px;
+            overflow: hidden;
+        }
+        .songName{
+            margin-top:10px;
+            color:#353535;
+            font-size:25px;
+            height: 33px;
+            overflow: hidden;
+
+        }
+        .loading{
+            position: relative;
+            margin-top:10px;
+        }
+        .loading>img:first-child{
+            position: absolute;
+            left:170px;
+            top:3px;
+        }
+        .btn{
+            margin-top: 10px;
+            position: relative;
+            /*background: #fff;*/
+            height: 22px
+            
+        }
+        .btn img{
+            vertical-align: middle;
+        }
+        .btn .wrapper{
+            display: inline-block;
+            position: absolute;
+            left:98px;
+            
+        }
+        .btn .wrapper>img:nth-child(2){
+            margin-left: 30px;
+            margin-right: 30px;
+            width:20px;
+        }
+        .wrapper>img:hover{
+            opacity: .4;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+<div class="main">
+    <audio src="http://yinyueshiting.baidu.com/data2/music/240397424/7379310108000128.mp3?xcode=58307bf584b00637bdfb5657fcf2438e"></audio>
+    <div class="board">
+        <img src="img/music_0003s_0000_Kanye.png" alt="">
+        <div class="content">
+            <h3 class="singer"></h3>
+            <h3 class="songName"></h3>
+            <div class="loading"><img src="img/music_0001s_0000_slider.png" alt=""><img src="img/music_0001s_0002_loading.png" alt=""></div>
+            <div class="btn">
+                <div class="wrapper">
+                    <img class="pre" src="img/music_0002s_0000_Rewind.png" alt="">
+                    <img class="play-pause" src="img/music_0002s_0002_Play.png" pause-src="img/music_0002s_0003_Pause.png" play-src="img/music_0002s_0002_Play.png" alt="">
+                    <img class="next" src="img/music_0002s_0001_Fast-forward.png" alt="">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="jquery-3.1.1.min.js"></script>
+<script>
+    $(document).ready(function(){
+       var audio = $("audio")[0]; 
+       var $singer = $(".singer");
+       var $songName = $(".songName");
+       var $playPause = $(".play-pause");
+       var $next = $(".next");
+       var $pre = $(".pre");
+       var $load = $(".loading>img").eq(0);
+       var $loadBar = $(".loading>img").eq(1);
+       var $btns = $(".wrapper");
+       var canPlay = false;
+       var musicList = [];
+       var index = 0;
+       var latestIndex = 0;
+       var lock = true;
+       var clock;
+
+       getMusic();
+
+       $playPause.on("click",function(){
+            playPause();
+       });
+
+       $next.on("click",function(){
+            if(clock){
+                clearTimeout(clock);
+            }
+            clock = setTimeout(function(){
+                canPlay = true;
+                index+=1;
+                if(index>=latestIndex){
+                    getMusic();
+                }else{
+                    audio.setAttribute("src",musicList[index].url);
+                    $singer.text(musicList[index].artist);
+                    $songName.text(musicList[index].songName);
+                    play();
+                }
+            },300);
+ 
+       });
+
+       $pre.on("click",function () {
+            index -= 1;
+            if(index<0) index = 0;
+            audio.setAttribute("src",musicList[index].url);
+            $singer.text(musicList[index].artist);
+            $songName.text(musicList[index].songName);
+            play();
+       })
+
+       $(audio).on("timeupdate",function () {
+            var loadBarWidth = $loadBar.width()-18;
+            var musicDura = audio.duration;
+            var currentTime = audio.currentTime;
+
+            var left = currentTime/musicDura*loadBarWidth;
+            $load.animate({
+                left:left
+            })
+       });
+
+       // $btns.on({
+       //      "mousedown":function () {
+       //          $(this).addClass("click");
+       //      },
+       //      "mouseup":function () {
+       //          $(this).removeClass("click");
+       //      }
+       // },"img")
+       function getMusic(){
+            $.ajax({
+                url:"http://api.jirengu.com/fm/getSong.php?Billboard=public_tuijian_billboard",
+                method:"get",
+                dataType:"json"
+
+            }).done(function(ret){
+                var curSong = {};
+                audio.setAttribute("src",ret.song[0].url);
+                $singer.text(ret.song[0].artist);
+                $songName.text(ret.song[0].title);
+
+                curSong.url = ret.song[0].url;
+                curSong.singer = ret.song[0].artist;
+                curSong.songName = ret.song[0].title;
+
+                musicList.push(curSong);
+                latestIndex = musicList.length;
+                
+
+                if(canPlay){
+                    play();
+                }
+                
+            });
+       }
+       function play() {
+            var pause = $playPause.attr("pause-src");
+            audio.play();
+            $playPause.attr("src",pause);
+       }
+
+       function playPause(){
+            var state = $playPause.attr("src");
+            var play = $playPause.attr("play-src");
+            var pause = $playPause.attr("pause-src");
+            if(state === play){
+                audio.play();
+                $playPause.attr("src",pause);
+            }else{
+                audio.pause();
+                $playPause.attr("src",play);
+            }
+       }
+    });
+    
+    
+</script>
+
+</body>
+</html>
